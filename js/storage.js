@@ -7,9 +7,9 @@
  * in that case we fall back to an in-memory store so the app keeps working
  * for the session instead of crashing.
  *
- * Note: the storage API is referenced indirectly below because static preview
- * scanners reject any literal reference to it; at runtime the access is
- * feature-tested and guarded by try/catch either way.
+ * Note: tools/make-preview.sh packages a preview build whose storage adapter
+ * is in-memory only; this file keeps explicit guarded browser-storage access
+ * for the deployed GitHub Pages site.
  */
 const Store = (() => {
   const HISTORY_KEY = 'maa_history_v1';
@@ -18,12 +18,10 @@ const Store = (() => {
 
   function getStorage() {
     try {
-      const api = window[['local', 'Storage'].join('')];
-      if (!api) return null;
       const t = '__maa_test__';
-      api.setItem(t, t);
-      api.removeItem(t);
-      return api;
+      window.localStorage.setItem(t, t);
+      window.localStorage.removeItem(t);
+      return window.localStorage;
     } catch (e) {
       return null; // blocked or unavailable — session-only mode
     }

@@ -66,7 +66,8 @@
   const LABELS = {
     manipulated: { text: 'Likely AI / Manipulated', badge: 'Manipulated' },
     authentic: { text: 'Likely Authentic Capture', badge: 'Authentic' },
-    inconclusive: { text: 'Inconclusive', badge: 'Inconclusive' }
+    inconclusive: { text: 'Inconclusive', badge: 'Inconclusive' },
+    none: { text: 'Signal report', badge: 'Signals only' }
   };
 
   function confidencePct(c) {
@@ -130,6 +131,10 @@
 
       <div id="analysis-area"></div>
 
+      <div style="text-align:center;margin-top:var(--space-6)">
+        <button class="btn" id="example-btn" data-testid="button-example">${icons.info} View an example result</button>
+      </div>
+
       <div id="engine-note" style="margin-top: var(--space-6);"></div>
     `;
 
@@ -170,6 +175,39 @@
     });
 
     if (lastResult) renderResult(lastResult, area);
+
+    const exampleBtn = document.getElementById('example-btn');
+    exampleBtn.addEventListener('click', () => {
+      renderResult(exampleEntry(), area, true);
+    });
+  }
+
+  /* ---------------- Example (illustrative) result ---------------- */
+
+  function exampleEntry() {
+    let thumb = '';
+    try {
+      const c = document.createElement('canvas');
+      c.width = 96; c.height = 96;
+      const ctx = c.getContext('2d');
+      const g = ctx.createLinearGradient(0, 0, 96, 96);
+      g.addColorStop(0, '#7ea8bd');
+      g.addColorStop(1, '#e8b48c');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, 96, 96);
+      thumb = c.toDataURL('image/jpeg', 0.7);
+    } catch (e) { /* non-fatal */ }
+    return {
+      id: 'example',
+      filename: 'example_ai_portrait.png',
+      timestamp: Date.now(),
+      label: 'manipulated',
+      confidence: 0.95,
+      thumbnail: thumb,
+      engine: 'example',
+      example: true,
+      explanation: 'This is what a result looks like once the trained detection model is connected: the model\u2019s classification, its confidence score, and an explanation in its own words.'
+    };
   }
 
   /* ---------------- Analysis flow ---------------- */
@@ -219,7 +257,7 @@
             confidence: result.confidence,
             thumbnail: result.thumbnail || '',
             engine: result.engine,
-            explanation: result.explanation,
+            explanation: result.explanation || '',
             signals: result.signals
           };
 
@@ -261,10 +299,11 @@
   });
 
   function renderResult(entry, area, animate = false) {
-    const l = LABELS[entry.label];
-    const pct = confidencePct(entry.confidence);
-    const badgeClass = entry.label;
-    const summaryClass = entry.label;
+    const hasAssessment = !!entry.label;
+    const l = LABELS[entry.label] || LABELS.none;
+    const pct = hasAssessment ? confidencePct(entry.confidence) : '';
+    const badgeClass = entry.label || 'inconclusive';
+    const summaryClass = entry.label || 'inconclusive';
     const meterColor =
       entry.label === 'authentic' ? 'var(--color-peach-strong)' :
       entry.label === 'manipulated' ? 'var(--color-primary)' :
@@ -283,9 +322,16 @@
           <span class="result-badge ${badgeClass}">${entry.label === 'authentic' ? icons.user : icons.chip} ${l.badge}</span>
         </div>
         <div class="result-body">
+          ${entry.example ? `
+          <div class="notice" style="background:var(--color-peach-highlight)">
+            ${icons.info}
+            <span><strong>Illustrative example</strong> — not an assessment of your upload.</span>
+          </div>` : ''}
+
+          ${hasAssessment ? `
           <div class="result-summary ${summaryClass}">
             <div>
-              <p class="result-label">Classification</p>
+              <p class="result-label">${entry.engine === 'example' ? 'Example classification' : 'Classification'}</p>
               <p class="result-classification">${l.text}</p>
             </div>
             <div class="result-confidence">
@@ -296,11 +342,15 @@
             </div>
           </div>
 
-          <p>${esc(entry.explanation)}</p>
+          <p>${esc(entry.explanation || '')}</p>` : `
+          <div class="notice" style="background:var(--color-surface-offset)">
+            ${icons.info}
+            <span><strong>Detector not connected — no authenticity assessment performed.</strong> The team's trained deepfake-detection model is not connected yet (see Settings → Detection engine). The checks below are factual observations about this file, not a verdict.</span>
+          </div>`}
 
           ${entry.signals && entry.signals.length ? `
           <div>
-            <p class="result-label" style="margin-bottom:var(--space-2)">Signal breakdown</p>
+            <p class="result-label" style="margin-bottom:var(--space-2)">Observed signals</p>
             <div class="signal-list">
               ${entry.signals.map((s) => `
                 <div class="signal-row">
@@ -309,14 +359,13 @@
                     <p class="title">${esc(s.title)}</p>
                     <p class="detail">${esc(s.detail)}</p>
                   </div>
-                  <span class="signal-weight">${s.weight > 0 ? '+' : ''}${s.weight.toFixed(2)}</span>
                 </div>`).join('')}
             </div>
           </div>` : ''}
 
           <div class="notice">
             ${icons.info}
-            <span>Limitations: this system analyzes PNG/JPEG images (faces work best); short videos and large files are future work. Heuristic results are indicative — no automated tool can definitively prove an image is real or fake.</span>
+            <span>Limitations: this system analyzes PNG/JPEG images (faces work best); short videos and large files are future work. No automated tool can definitively prove an image is real or fake — treat every result, including a model's, as evidence to weigh rather than a verdict.</span>
           </div>
 
           <div class="result-actions">
@@ -342,7 +391,7 @@
         ${history.length ? `<button class="btn danger-ghost" id="clear-history" data-testid="button-clear-history">${icons.trash} Clear all</button>` : ''}
       </div>
       <p style="color:var(--color-text-muted);margin-bottom:var(--space-6);font-size:var(--text-sm)">
-        Saved on this browser only — nothing is uploaded or synced anywhere.
+        Saved on this browser only — nothing is synced anywhere. If a custom model API is configured, images are sent to that server during analysis.
       </p>
       <div class="history-list" id="history-list"></div>`;
 
@@ -370,8 +419,8 @@
             <p class="timestamp">${fmtDate(h.timestamp)} — engine: ${h.engine === 'api' ? 'custom API model' : 'heuristic preview'}</p>
           </div>
           <div class="history-result">
-            <span class="result-badge ${h.label}">${h.label === 'authentic' ? icons.user : icons.chip} ${l.badge}</span>
-            <span class="history-confidence">${confidencePct(h.confidence)} confidence</span>
+            <span class="result-badge ${h.label || 'inconclusive'}">${h.label === 'authentic' ? icons.user : icons.chip} ${(LABELS[h.label] || LABELS.none).badge}</span>
+            <span class="history-confidence">${h.confidence != null ? confidencePct(h.confidence) + ' confidence' : 'no assessment'}</span>
           </div>
           <button class="history-delete" data-delete="${h.id}" aria-label="Delete ${esc(h.filename)}" data-testid="button-delete-${h.id}">${icons.trash}</button>
         </div>`;

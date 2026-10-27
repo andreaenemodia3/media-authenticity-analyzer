@@ -29,7 +29,7 @@ const Analyzer = (() => {
   const AI_SIGNATURES = [
     'midjourney', 'dall-e', 'dall e', 'openai', 'stable diffusion', 'stablediffusion',
     'firefly', 'adobe firefly', 'imagen', 'google ai', 'grok', 'flux',
-    'trainedalgorithmicmedia', 'c2pa', 'inferredmetadata'
+    'trainedalgorithmicmedia', 'inferredmetadata'
   ];
 
   const EDITOR_SIGNATURES = [
@@ -109,10 +109,11 @@ const Analyzer = (() => {
 
     let pos = 8;
     while (pos + 8 < bytes.length) {
-      const len = (bytes[pos] << 24) | (bytes[pos + 1] << 16) | (bytes[pos + 2] << 8) | bytes[pos + 3];
+      // Unsigned chunk length; reject malformed chunks that would loop or overrun
+      const len = ((bytes[pos] << 24) | (bytes[pos + 1] << 16) | (bytes[pos + 2] << 8) | bytes[pos + 3]) >>> 0;
+      if (len > bytes.length - pos - 12) break;
       const type = latin1(bytes.subarray(pos + 4, pos + 8));
       const data = bytes.subarray(pos + 8, pos + 8 + len);
-      if (data.length > pos + 8 + len) break;
 
       if (type === 'tEXt') {
         const nul = data.indexOf(0);
@@ -252,7 +253,7 @@ const Analyzer = (() => {
 
   /* ===================== Heuristic engine ===================== */
 
-  async function runHeuristic(file) {
+  async function runHeuristic(file, img) {
     const bytes = await readFileBytes(file);
     const isJpeg = bytes[0] === 0xff && bytes[1] === 0xd8;
     const isPng = bytes[0] === 0x89 && bytes[1] === 0x50;
@@ -313,15 +314,14 @@ const Analyzer = (() => {
     /* --- Signal 3: C2PA content credentials --- */
     if (hasC2PA) {
       addSignal(
-        'Content credentials (C2PA) found',
-        'The file carries a tamper-evident provenance manifest. Some cameras attach it to real captures; some AI tools attach it to generated images. Check the details of the credential to tell them apart.',
+        'Possible content-credential marker',
+        'The file may carry a C2PA content credential. This detection only notes the marker\u2019s presence \u2014 the credential itself was not validated, and both cameras and AI tools can attach them.',
         'shield',
-        foundAI.length ? 0.0 : -0.05
+        0.0
       );
     }
 
     /* --- Signal 4: pixel noise statistics --- */
-    const img = await loadImage(file);
     const stats = noiseStats(img);
     if (stats) {
       if (stats.meanNoise < 1.1) {
@@ -376,25 +376,15 @@ const Analyzer = (() => {
       }
     }
 
-    /* --- Score → classification --- */
-    const probability = Math.min(0.95, Math.max(0.05, 0.5 + score));
-    const label =
-      probability >= 0.65 ? 'manipulated' :
-      probability <= 0.35 ? 'authentic' : 'inconclusive';
-
-    const confidence = Math.max(probability, 1 - probability);
-
-    const explanation =
-      label === 'manipulated'
-        ? 'The evidence in this file leans toward AI generation or manipulation. Treat the image as suspicious until a stronger verification method confirms otherwise.'
-        : label === 'authentic'
-        ? 'The metadata and pixel statistics are more consistent with a real camera capture than with a generated image. This is still not proof of authenticity.'
-        : 'The signals in this file are mixed or inconclusive. No single check is decisive for this image.';
-
+    /* --- Score -> observations only ---
+     * Without the team's trained model, these checks are factual observations
+     * about the file. They do NOT produce a calibrated authenticity assessment,
+     * so no aggregate classification or confidence is returned here. The full
+     * classification UI is demonstrated via the labeled example, and lights up
+     * for real once a model API is connected (Settings -> Detection engine). */
     return {
-      label,
-      confidence,
-      explanation,
+      label: null,
+      confidence: null,
       engine: 'heuristic',
       signals,
       thumbnail
@@ -426,12 +416,17 @@ const Analyzer = (() => {
       throw new Error(`The detection API returned an error (${response.status}).`);
     }
     const data = await response.json();
-    const label = ['manipulated', 'authentic', 'inconclusive'].includes(data.label)
-      ? data.label
-      : 'inconclusive';
+    const label = data.label;
+    const conf = data.confidence;
+    if (!['manipulated', 'authentic', 'inconclusive'].includes(label)) {
+      throw new Error('The detection API returned an unrecognized label: ' + JSON.stringify(label));
+    }
+    if (typeof conf !== 'number' || !isFinite(conf) || conf < 0 || conf > 1) {
+      throw new Error('The detection API returned an invalid confidence value: ' + JSON.stringify(conf));
+    }
     return {
       label,
-      confidence: typeof data.confidence === 'number' ? Math.min(1, Math.max(0, data.confidence)) : 0.5,
+      confidence: conf,
       explanation: data.explanation || 'Classification returned by the connected detection model.',
       engine: 'api',
       signals: []
@@ -447,13 +442,18 @@ const Analyzer = (() => {
     if (file.size > 25 * 1024 * 1024) {
       throw new Error('That file is larger than 25 MB. Please upload a smaller image.');
     }
+    // Validate the file decodes as an image before any processing or transmission
+    const img = await loadImage(file);
+    if (!img.naturalWidth || !img.naturalHeight ||
+        img.naturalWidth > 10000 || img.naturalHeight > 10000) {
+      throw new Error('That file could not be decoded as a valid image.');
+    }
     if (settings.engine === 'api' && settings.apiEndpoint) {
       const result = await runApi(file, settings.apiEndpoint);
-      const img = await loadImage(file);
       result.thumbnail = makeThumbnail(img);
       return result;
     }
-    return runHeuristic(file);
+    return runHeuristic(file, img);
   }
 
   return { analyze, makeThumbnail, loadImage };
