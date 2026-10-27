@@ -6,6 +6,8 @@ A web application that estimates whether an uploaded PNG/JPEG image is an authen
 human capture or AI-generated / manipulated. Team project by Andrea Enemodia,
 Eriana Williams, Ariel Garza, and Byron Charles.
 
+**Live site:** <https://andreaenemodia3.github.io/media-authenticity-analyzer/>
+
 ## Features
 
 - **Analyze** — upload (or drag-and-drop) a PNG/JPEG image and get a classification
