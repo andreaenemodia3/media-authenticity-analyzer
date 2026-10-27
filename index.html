@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Media Authenticity Analyzer</title>
+  <meta name="description" content="Upload a PNG or JPEG image to estimate whether it is an authentic human capture or AI-generated / manipulated. Student project: Deepfake Detection System." />
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://api.fontshare.com" />
+  <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 8V5a2 2 0 0 1 2-2h3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M21 16v3a2 2 0 0 1-2 2h-3"/>
+            <circle cx="12" cy="10.5" r="1" fill="currentColor" stroke="none"/>
+            <path d="M8.6 14.8a4.4 4.4 0 0 0 6.8 0"/>
+            <circle cx="9.2" cy="10.5" r="0.5" fill="currentColor" stroke="none"/>
+            <circle cx="14.8" cy="10.5" r="0.5" fill="currentColor" stroke="none"/>
+          </svg>
+        </span>
+        <span class="brand-name">Authenticity&nbsp;Analyzer</span>
+      </div>
+      <nav class="nav" aria-label="Main">
+        <a href="#/" class="nav-pill" data-route="analyze" data-testid="nav-analyze">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 8V5a2 2 0 0 1 2-2h3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M21 16v3a2 2 0 0 1-2 2h-3"/>
+            <circle cx="12" cy="12" r="3.2"/>
+          </svg>
+          Analyze
+        </a>
+        <a href="#/history" class="nav-pill" data-route="history" data-testid="nav-history">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 12a9 9 0 1 0 2.6-6.4L3 8"/>
+            <path d="M3 3v5h5"/>
+            <path d="M12 7v5l3.5 2"/>
+          </svg>
+          History
+        </a>
+        <a href="#/settings" class="nav-pill" data-route="settings" data-testid="nav-settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9v.1a1.7 1.7 0 0 0 1.5 1h.1a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>
+          </svg>
+          Settings
+        </a>
+      </nav>
+    </header>
+
+    <main id="view" class="view" aria-live="polite">
+      <!-- Views are rendered here by app.js -->
+    </main>
+
+    <footer class="footer">
+      <p>Student project — Deepfake Detection System: An AI-Powered Media Authenticity Analyzer.</p>
+      <p class="footer-muted">Results are estimates, not proof. This tool cannot definitively prove an image is real or fake.</p>
+    </footer>
+  </div>
+
+  <input type="file" id="file-input" accept="image/png,image/jpeg" hidden />
+  <script src="js/storage.js"></script>
+  <script src="js/analysis.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
